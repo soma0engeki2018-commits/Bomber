@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>教授学的ボムバーマン - 聖剣の審判</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
         body {
             background: #1a1a2e;
@@ -17,6 +17,11 @@
             align-items: center;
             overflow: hidden;
             user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
         }
 
         /* ===== STATUS BAR ===== */
@@ -125,6 +130,11 @@
         }
 
         /* ===== GAME BOY CONTROLLER ===== */
+        #controller, #dpad, #action-area, #center-btns {
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
         #controller {
             width: 100%;
             max-width: 430px;
@@ -160,10 +170,6 @@
             box-shadow: 0 4px 0 #0a0a1a, inset 0 1px 0 rgba(255,255,255,0.1);
             transition: transform 0.05s, box-shadow 0.05s;
             -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
         }
         .dpad-btn:active, .dpad-btn.pressed {
             transform: translateY(2px);
@@ -209,10 +215,6 @@
             justify-content: center;
             transition: transform 0.05s, box-shadow 0.05s;
             -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
         }
         #btn-bomb:active, #btn-bomb.pressed {
             transform: translateY(3px);
@@ -270,11 +272,6 @@
             border-radius: 50%;
             background: #667;
         }
-
-        #btn-up::before    { content: '▲'; pointer-events: none; }
-        #btn-down::before  { content: '▼'; pointer-events: none; }
-        #btn-left::before  { content: '◀'; pointer-events: none; }
-        #btn-right::before { content: '▶'; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -305,11 +302,11 @@
 
         <!-- D-PAD -->
         <div id="dpad">
-            <button class="dpad-btn" id="btn-up"></button>
-            <button class="dpad-btn" id="btn-left"></button>
+            <button class="dpad-btn" id="btn-up">▲</button>
+            <button class="dpad-btn" id="btn-left">◀</button>
             <div class="dpad-btn" id="btn-center"></div>
-            <button class="dpad-btn" id="btn-right"></button>
-            <button class="dpad-btn" id="btn-down"></button>
+            <button class="dpad-btn" id="btn-right">▶</button>
+            <button class="dpad-btn" id="btn-down">▼</button>
         </div>
 
         <!-- CENTER MINI BUTTONS -->
@@ -373,23 +370,19 @@ const SERIFU = {
 };
 
 // ===== TOUCH CONTROLS =====
-// テキスト選択を完全に防ぐ
 document.addEventListener('selectstart', e => e.preventDefault());
 document.addEventListener('contextmenu', e => e.preventDefault());
-
 function setupTouchBtn(id, keyCode) {
     const el = document.getElementById(id);
     if (!el) return;
 
     const press = (e) => {
         e.preventDefault();
-        e.stopPropagation();
         keys[keyCode] = true;
         el.classList.add('pressed');
     };
     const release = (e) => {
         e.preventDefault();
-        e.stopPropagation();
         keys[keyCode] = false;
         el.classList.remove('pressed');
     };
@@ -397,8 +390,6 @@ function setupTouchBtn(id, keyCode) {
     el.addEventListener('touchstart', press, { passive: false });
     el.addEventListener('touchend', release, { passive: false });
     el.addEventListener('touchcancel', release, { passive: false });
-    el.addEventListener('selectstart', e => e.preventDefault());
-    el.addEventListener('contextmenu', e => e.preventDefault());
     // mouse fallback for desktop testing
     el.addEventListener('mousedown', press);
     el.addEventListener('mouseup', release);
