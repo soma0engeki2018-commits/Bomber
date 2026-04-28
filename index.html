@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>教授学的ボムバーマン - 聖剣の審判</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
         body {
             background: #1a1a2e;
@@ -17,11 +17,6 @@
             align-items: center;
             overflow: hidden;
             user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            touch-action: manipulation;
-            -webkit-touch-callout: none;
         }
 
         /* ===== STATUS BAR ===== */
@@ -40,16 +35,6 @@
             font-size: 0.85em;
             color: #ffd700;
             text-shadow: 0 0 8px #ffd700aa;
-        }
-        #pause-btn {
-            background: #333;
-            border: 1px solid #666;
-            color: #ccc;
-            padding: 3px 10px;
-            border-radius: 4px;
-            font-size: 0.75em;
-            cursor: pointer;
-            font-family: 'MS Mincho', serif;
         }
 
         /* ===== GAME SCREEN WRAPPER (Game Boy screen look) ===== */
@@ -130,11 +115,6 @@
         }
 
         /* ===== GAME BOY CONTROLLER ===== */
-        #controller, #dpad, #action-area, #center-btns {
-            touch-action: none;
-            -webkit-user-select: none;
-            user-select: none;
-        }
         #controller {
             width: 100%;
             max-width: 430px;
@@ -279,7 +259,6 @@
     <!-- STATUS -->
     <div id="ui-layer">
         <span class="status-item">第 <span id="level-val">1</span> 学期</span>
-        <button id="pause-btn" onclick="togglePause()">⏸ ポーズ</button>
         <span class="status-item" id="bomb-status">💣 <span id="bomb-count">2</span></span>
     </div>
 
@@ -370,8 +349,6 @@ const SERIFU = {
 };
 
 // ===== TOUCH CONTROLS =====
-document.addEventListener('selectstart', e => e.preventDefault());
-document.addEventListener('contextmenu', e => e.preventDefault());
 function setupTouchBtn(id, keyCode) {
     const el = document.getElementById(id);
     if (!el) return;
