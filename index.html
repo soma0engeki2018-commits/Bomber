@@ -36,6 +36,14 @@
             color: #ffd700;
             text-shadow: 0 0 8px #ffd700aa;
         }
+        #pause-btn {
+            background: #333;
+            border: 1px solid #666;
+            color: #ccc;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            cursor: pointer;
             font-family: 'MS Mincho', serif;
         }
 
@@ -152,6 +160,10 @@
             box-shadow: 0 4px 0 #0a0a1a, inset 0 1px 0 rgba(255,255,255,0.1);
             transition: transform 0.05s, box-shadow 0.05s;
             -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         .dpad-btn:active, .dpad-btn.pressed {
             transform: translateY(2px);
@@ -197,6 +209,10 @@
             justify-content: center;
             transition: transform 0.05s, box-shadow 0.05s;
             -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         #btn-bomb:active, #btn-bomb.pressed {
             transform: translateY(3px);
@@ -254,6 +270,11 @@
             border-radius: 50%;
             background: #667;
         }
+
+        #btn-up::before    { content: '▲'; pointer-events: none; }
+        #btn-down::before  { content: '▼'; pointer-events: none; }
+        #btn-left::before  { content: '◀'; pointer-events: none; }
+        #btn-right::before { content: '▶'; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -261,7 +282,7 @@
     <!-- STATUS -->
     <div id="ui-layer">
         <span class="status-item">第 <span id="level-val">1</span> 学期</span>
-
+        <button id="pause-btn" onclick="togglePause()">⏸ ポーズ</button>
         <span class="status-item" id="bomb-status">💣 <span id="bomb-count">2</span></span>
     </div>
 
@@ -284,11 +305,11 @@
 
         <!-- D-PAD -->
         <div id="dpad">
-            <button class="dpad-btn" id="btn-up">▲</button>
-            <button class="dpad-btn" id="btn-left">◀</button>
+            <button class="dpad-btn" id="btn-up"></button>
+            <button class="dpad-btn" id="btn-left"></button>
             <div class="dpad-btn" id="btn-center"></div>
-            <button class="dpad-btn" id="btn-right">▶</button>
-            <button class="dpad-btn" id="btn-down">▼</button>
+            <button class="dpad-btn" id="btn-right"></button>
+            <button class="dpad-btn" id="btn-down"></button>
         </div>
 
         <!-- CENTER MINI BUTTONS -->
@@ -352,17 +373,23 @@ const SERIFU = {
 };
 
 // ===== TOUCH CONTROLS =====
+// テキスト選択を完全に防ぐ
+document.addEventListener('selectstart', e => e.preventDefault());
+document.addEventListener('contextmenu', e => e.preventDefault());
+
 function setupTouchBtn(id, keyCode) {
     const el = document.getElementById(id);
     if (!el) return;
 
     const press = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         keys[keyCode] = true;
         el.classList.add('pressed');
     };
     const release = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         keys[keyCode] = false;
         el.classList.remove('pressed');
     };
@@ -370,6 +397,8 @@ function setupTouchBtn(id, keyCode) {
     el.addEventListener('touchstart', press, { passive: false });
     el.addEventListener('touchend', release, { passive: false });
     el.addEventListener('touchcancel', release, { passive: false });
+    el.addEventListener('selectstart', e => e.preventDefault());
+    el.addEventListener('contextmenu', e => e.preventDefault());
     // mouse fallback for desktop testing
     el.addEventListener('mousedown', press);
     el.addEventListener('mouseup', release);
