@@ -36,6 +36,16 @@
             color: #ffd700;
             text-shadow: 0 0 8px #ffd700aa;
         }
+        #pause-btn {
+            background: #333;
+            border: 1px solid #666;
+            color: #ccc;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            cursor: pointer;
+            font-family: 'MS Mincho', serif;
+        }
 
         /* ===== GAME SCREEN WRAPPER (Game Boy screen look) ===== */
         #screen-wrapper {
@@ -252,6 +262,88 @@
             border-radius: 50%;
             background: #667;
         }
+
+        /* ===== モード切替トグル ===== */
+        #mode-toggle {
+            display: flex;
+            background: #0a0a1a;
+            border-radius: 20px;
+            padding: 3px;
+            border: 1px solid #333;
+            margin-bottom: 4px;
+        }
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: #666;
+            font-size: 0.62em;
+            font-family: 'MS Mincho', serif;
+            padding: 4px 9px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        .mode-btn.active {
+            background: #3a3a6a;
+            color: #fff;
+        }
+
+        /* ===== スライドパッド ===== */
+        #slidepad-wrap {
+            display: none;
+            position: relative;
+            width: 168px;
+            height: 168px;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+        }
+        #slidepad-base {
+            width: 152px;
+            height: 152px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 35%, #2e2e50, #14142a);
+            border: 3px solid #3a3a5a;
+            box-shadow: 0 5px 0 #0a0a1a, inset 0 2px 6px rgba(0,0,0,0.6);
+            position: relative;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        /* 十字線 */
+        #slidepad-base::before {
+            content: '';
+            position: absolute;
+            top: 12px; bottom: 12px;
+            left: 50%; width: 1px;
+            background: rgba(255,255,255,0.07);
+            transform: translateX(-50%);
+        }
+        #slidepad-base::after {
+            content: '';
+            position: absolute;
+            left: 12px; right: 12px;
+            top: 50%; height: 1px;
+            background: rgba(255,255,255,0.07);
+            transform: translateY(-50%);
+        }
+        #slidepad-stick {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 32%, #6a6aaa, #2a2a50);
+            border: 2px solid #5a5a8a;
+            box-shadow: 0 4px 0 #0a0a1a, inset 0 1px 3px rgba(255,255,255,0.2);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            will-change: transform;
+        }
     </style>
 </head>
 <body>
@@ -259,6 +351,7 @@
     <!-- STATUS -->
     <div id="ui-layer">
         <span class="status-item">第 <span id="level-val">1</span> 学期</span>
+        <button id="pause-btn" onclick="togglePause()">⏸ ポーズ</button>
         <span class="status-item" id="bomb-status">💣 <span id="bomb-count">2</span></span>
     </div>
 
@@ -288,8 +381,19 @@
             <button class="dpad-btn" id="btn-down">▼</button>
         </div>
 
+        <!-- SLIDE PAD -->
+        <div id="slidepad-wrap">
+            <div id="slidepad-base">
+                <div id="slidepad-stick"></div>
+            </div>
+        </div>
+
         <!-- CENTER MINI BUTTONS -->
         <div id="center-btns">
+            <div id="mode-toggle">
+                <button class="mode-btn active" id="mode-dpad" onclick="setMode('dpad')">十字</button>
+                <button class="mode-btn" id="mode-slide" onclick="setMode('slide')">スライド</button>
+            </div>
             <button class="mini-btn" onclick="togglePause()">PAUSE</button>
             <button class="mini-btn" onclick="tryReset()">RESET</button>
             <div id="speaker">
@@ -347,6 +451,77 @@ const SERIFU = {
     19: "直道「第19学期。ホクホク感も最高潮だ。さあ、私を超えてみたまえ」",
     20: "直道「……っ！？ その輝き、その聖剣……第20学期、ついに修了認定だねぇ！」"
 };
+
+// ===== TOUCH CONTROLS =====
+
+// --- モード切替 ---
+function setMode(mode) {
+    const dpad = document.getElementById('dpad');
+    const slideWrap = document.getElementById('slidepad-wrap');
+    const btnDpad = document.getElementById('mode-dpad');
+    const btnSlide = document.getElementById('mode-slide');
+
+    if (mode === 'dpad') {
+        dpad.style.display = 'block';
+        slideWrap.style.display = 'none';
+        btnDpad.classList.add('active');
+        btnSlide.classList.remove('active');
+    } else {
+        dpad.style.display = 'none';
+        slideWrap.style.display = 'flex';
+        btnDpad.classList.remove('active');
+        btnSlide.classList.add('active');
+    }
+    // 方向キーをリセット
+    ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].forEach(k => keys[k] = false);
+    document.getElementById('slidepad-stick').style.transform = 'translate(-50%, -50%)';
+}
+
+// --- スライドパッド ---
+(function() {
+    const base = document.getElementById('slidepad-base');
+    const stick = document.getElementById('slidepad-stick');
+    const DEAD = 10;   // デッドゾーン（px）
+    const MAX  = 52;   // スティック最大移動距離（px）
+
+    function update(clientX, clientY) {
+        const rect = base.getBoundingClientRect();
+        const cx = rect.left + rect.width  / 2;
+        const cy = rect.top  + rect.height / 2;
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const clamp = Math.min(dist, MAX);
+
+        // スティックを動かす
+        stick.style.transform =
+            `translate(calc(-50% + ${clamp * Math.cos(angle)}px), calc(-50% + ${clamp * Math.sin(angle)}px))`;
+
+        // 4方向キーに変換
+        keys['ArrowLeft']  = dx < -DEAD;
+        keys['ArrowRight'] = dx >  DEAD;
+        keys['ArrowUp']    = dy < -DEAD;
+        keys['ArrowDown']  = dy >  DEAD;
+    }
+
+    function reset() {
+        stick.style.transform = 'translate(-50%, -50%)';
+        ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].forEach(k => keys[k] = false);
+    }
+
+    // タッチ
+    base.addEventListener('touchstart', e => { e.preventDefault(); update(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    base.addEventListener('touchmove',  e => { e.preventDefault(); update(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    base.addEventListener('touchend',   e => { e.preventDefault(); reset(); }, { passive: false });
+    base.addEventListener('touchcancel',e => { e.preventDefault(); reset(); }, { passive: false });
+
+    // マウス（PC確認用）
+    let mouseDown = false;
+    base.addEventListener('mousedown', e => { mouseDown = true; update(e.clientX, e.clientY); });
+    document.addEventListener('mousemove', e => { if (mouseDown) update(e.clientX, e.clientY); });
+    document.addEventListener('mouseup', () => { if (mouseDown) { mouseDown = false; reset(); } });
+})();
 
 // ===== TOUCH CONTROLS =====
 function setupTouchBtn(id, keyCode) {
