@@ -477,12 +477,15 @@ function setMode(mode) {
     document.getElementById('slidepad-stick').style.transform = 'translate(-50%, -50%)';
 }
 
-// --- スライドパッド ---
+// --- スライドパッド（アナログ対応版）---
 (function() {
     const base = document.getElementById('slidepad-base');
     const stick = document.getElementById('slidepad-stick');
-    const DEAD = 10;   // デッドゾーン（px）
+    const DEAD = 8;    // デッドゾーン（px）：小さくして感度アップ
     const MAX  = 52;   // スティック最大移動距離（px）
+
+    // アナログ入力値（-1.0 〜 1.0）をグローバルに保持
+    window.slideAnalog = { x: 0, y: 0 };
 
     function update(clientX, clientY) {
         const rect = base.getBoundingClientRect();
@@ -498,15 +501,27 @@ function setMode(mode) {
         stick.style.transform =
             `translate(calc(-50% + ${clamp * Math.cos(angle)}px), calc(-50% + ${clamp * Math.sin(angle)}px))`;
 
-        // 4方向キーに変換
-        keys['ArrowLeft']  = dx < -DEAD;
-        keys['ArrowRight'] = dx >  DEAD;
-        keys['ArrowUp']    = dy < -DEAD;
-        keys['ArrowDown']  = dy >  DEAD;
+        // アナログ値を計算（デッドゾーン内はゼロ、それ以降は0〜1に正規化）
+        if (dist < DEAD) {
+            window.slideAnalog.x = 0;
+            window.slideAnalog.y = 0;
+        } else {
+            const normalized = Math.min((dist - DEAD) / (MAX - DEAD), 1.0);
+            window.slideAnalog.x = Math.cos(angle) * normalized;
+            window.slideAnalog.y = Math.sin(angle) * normalized;
+        }
+
+        // 方向キーフラグも維持（互換性のため）
+        keys['ArrowLeft']  = window.slideAnalog.x < -0.15;
+        keys['ArrowRight'] = window.slideAnalog.x >  0.15;
+        keys['ArrowUp']    = window.slideAnalog.y < -0.15;
+        keys['ArrowDown']  = window.slideAnalog.y >  0.15;
     }
 
     function reset() {
         stick.style.transform = 'translate(-50%, -50%)';
+        window.slideAnalog.x = 0;
+        window.slideAnalog.y = 0;
         ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].forEach(k => keys[k] = false);
     }
 
@@ -650,11 +665,36 @@ function update() {
     if (gameOver || isPaused) return;
 
     let pnx = player.x, pny = player.y;
-    if (keys['ArrowUp'])    { pny -= PLAYER_SPEED; player.swordDir = 'Up'; }
-    if (keys['ArrowDown'])  { pny += PLAYER_SPEED; player.swordDir = 'Down'; }
-    if (keys['ArrowLeft'])  { pnx -= PLAYER_SPEED; player.swordDir = 'Left'; }
-    if (keys['ArrowRight']) { pnx += PLAYER_SPEED; player.swordDir = 'Right'; }
-    if (!isBlocked(pnx, pny, player.r, player, false)) { player.x = pnx; player.y = pny; }
+
+    // スライドパッドのアナログ入力があれば速度に反映（斜め移動・速度比例）
+    const analog = window.slideAnalog || { x: 0, y: 0 };
+    const usingAnalog = (analog.x !== 0 || analog.y !== 0);
+
+    if (usingAnalog) {
+        // アナログ値で移動量を計算（最大PLAYER_SPEED、斜めも正規化）
+        const len = Math.sqrt(analog.x * analog.x + analog.y * analog.y);
+        const nx = analog.x / len;
+        const ny = analog.y / len;
+        const speed = PLAYER_SPEED * Math.min(len, 1.0);
+        pnx += nx * speed;
+        pny += ny * speed;
+        // 剣の向き：アナログの主方向で決定
+        if (Math.abs(analog.x) >= Math.abs(analog.y)) {
+            player.swordDir = analog.x > 0 ? 'Right' : 'Left';
+        } else {
+            player.swordDir = analog.y > 0 ? 'Down' : 'Up';
+        }
+    } else {
+        // 方向キー（十字パッド・キーボード）
+        if (keys['ArrowUp'])    { pny -= PLAYER_SPEED; player.swordDir = 'Up'; }
+        if (keys['ArrowDown'])  { pny += PLAYER_SPEED; player.swordDir = 'Down'; }
+        if (keys['ArrowLeft'])  { pnx -= PLAYER_SPEED; player.swordDir = 'Left'; }
+        if (keys['ArrowRight']) { pnx += PLAYER_SPEED; player.swordDir = 'Right'; }
+    }
+
+    // X・Y独立で衝突判定（壁に沿ったスライド移動）
+    if (!isBlocked(pnx, player.y, player.r, player, false)) { player.x = pnx; }
+    if (!isBlocked(player.x, pny, player.r, player, false)) { player.y = pny; }
 
     if (level < 20) {
         if (player.cooldown > 0) player.cooldown--;
